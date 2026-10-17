@@ -1,0 +1,9 @@
+[
+  { "id": "midnight", "name": "Midnight", "css": "radial-gradient(1200px 800px at 20% 10%, #2b1a55, #07070b 70%)" },
+  { "id": "aurora",   "name": "Aurora",   "css": "linear-gradient(135deg,#0f2027,#203a43,#2c5364)" },
+  { "id": "sakura",   "name": "Sakura",   "css": "radial-gradient(900px 600px at 80% 20%, #ff8fb1, #2a0b1a 70%)" },
+  { "id": "cyber",    "name": "Cyber",    "css": "radial-gradient(1000px 700px at 30% 80%, #00e5ff55, transparent 60%), linear-gradient(160deg,#0a0a12,#1a0b2e)" },
+  { "id": "forest",   "name": "Forest",   "css": "radial-gradient(900px 600px at 50% 100%, #1f6f4a, #05070a 70%)" },
+  { "id": "ember",    "name": "Ember",    "css": "radial-gradient(900px 600px at 70% 90%, #7a2b12, #0a0608 70%)" },
+  { "id": "void",     "name": "Void",     "css": "#07070b" }
+]
