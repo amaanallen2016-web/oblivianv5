@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OblivianOS</title>
+<style>
+:root{ --accent:#7c5cff; --accent-soft:rgba(124,92,255,.22); }
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden;background:#07070b;color:#e8e8f0;
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+button{font-family:inherit}
+
+/* boot */
+#boot{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:30px;
+  background:radial-gradient(1200px 800px at 50% 0%,#1a1230,#07070b 70%);transition:opacity .45s}
+#boot.hide{opacity:0;pointer-events:none}
+#boot .brand{font-size:11px;letter-spacing:.5em;text-transform:uppercase;color:#8a86a8}
+#boot h1{margin:0;font-size:36px;letter-spacing:.08em;font-weight:800;
+  background:linear-gradient(90deg,#a78bfa,#67e8f9);-webkit-background-clip:text;background-clip:text;color:transparent}
+.choices{display:flex;gap:26px;flex-wrap:wrap;justify-content:center}
+.choice{width:230px;padding:30px 22px;border-radius:22px;text-align:center;cursor:pointer;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);transition:.2s}
+.choice:hover{transform:translateY(-6px);border-color:var(--accent);background:var(--accent-soft);box-shadow:0 20px 50px rgba(124,92,255,.2)}
+.choice .glyph{font-size:44px;line-height:1}
+.choice .name{margin-top:12px;font-weight:700;letter-spacing:.06em}
+.choice .sub{margin-top:6px;font-size:11px;color:#8a86a8}
+
+/* shell */
+#wall{position:fixed;inset:0;background-size:cover;background-position:center;transition:background .5s ease;z-index:0}
+#topbar{position:fixed;top:0;left:0;right:0;height:34px;z-index:4000;display:flex;align-items:center;justify-content:space-between;
+  padding:0 14px;font-size:12px;color:#cfcbe8;background:rgba(10,10,16,.45);backdrop-filter:blur(16px);
+  border-bottom:1px solid rgba(255,255,255,.07)}
+#topbar .left{display:flex;gap:14px;align-items:center}
+#topbar b{letter-spacing:.14em;font-size:11px;color:var(--accent)}
+#dock{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:4000;display:flex;gap:8px;padding:9px 12px;border-radius:20px;
+  background:rgba(18,18,28,.6);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.1);box-shadow:0 20px 50px rgba(0,0,0,.5)}
+.dock-item{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;font-size:22px;cursor:pointer;user-select:none;
+  background:rgba(255,255,255,.05);border:1px solid transparent;transition:.15s}
+.dock-item:hover{transform:translateY(-6px) scale(1.05);background:var(--accent-soft);border-color:var(--accent)}
+
+/* windows */
+#desk-windows{position:fixed;inset:0;z-index:1000;pointer-events:none}
+.win{position:absolute;pointer-events:auto;display:flex;flex-direction:column;min-width:340px;min-height:220px;
+  background:rgba(16,16,24,.88);backdrop-filter:blur(26px);border:1px solid rgba(255,255,255,.1);border-radius:16px;overflow:hidden;
+  box-shadow:0 26px 70px rgba(0,0,0,.65);animation:pop .18s ease}
+@keyframes pop{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
+.win-header{height:44px;flex:0 0 44px;display:flex;align-items:center;justify-content:space-between;padding:0 8px 0 14px;
+  background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.07);cursor:grab;user-select:none}
+.win-title{font-size:13px;font-weight:600;color:#d6d2ee}
+.win-btns{display:flex;gap:6px}
+.wb{width:26px;height:26px;border-radius:8px;border:0;background:rgba(255,255,255,.07);color:#cfcbe8;cursor:pointer;
+  font-size:15px;line-height:1;display:grid;place-items:center}
+.wb:hover{background:rgba(255,255,255,.16)}
+.wb.close:hover{background:#e5484d}
+.win-body{flex:1;overflow:auto;position:relative}
+
+/* ui kit */
+.pad{padding:18px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+input,select,textarea{font-family:inherit;font-size:13px;color:#e8e8f0;background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:9px 12px;outline:none}
+input:focus,textarea:focus{border-color:var(--accent)}
+.btn{cursor:pointer;border:1px solid var(--accent);background:var(--accent-soft);color:#e8e8f0;
+  border-radius:10px;padding:9px 14px;font-size:13px;font-weight:600;transition:.15s}
+.btn:hover{filter:brightness(1.25)}
+.btn.ghost{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.14)}
+.muted{color:#8a86a8;font-size:12px;line-height:1.6}
+h3{margin:0 0 10px;font-size:14px;letter-spacing:.04em;color:#d6d2ee}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:12px;padding:16px}
+.tile{aspect-ratio:1/1;border-radius:14px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:8px;text-align:center;padding:8px;font-size:11.5px;color:#d6d2ee;border:1px solid rgba(255,255,255,.1);
+  background:linear-gradient(160deg,var(--accent-soft),rgba(255,255,255,.04));transition:.15s}
+.tile:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 12px 30px rgba(124,92,255,.2)}
+.tile .ico{font-size:28px}
+.chat{display:flex;height:100%}
+.chat .side{width:210px;flex:0 0 210px;border-right:1px solid rgba(255,255,255,.08);padding:12px;overflow:auto}
+.chat .main{flex:1;display:flex;flex-direction:column;min-width:0}
+.msgs{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:8px}
+.msg{max-width:76%;padding:8px 12px;border-radius:12px;font-size:13px;line-height:1.4;word-wrap:break-word}
+.msg.me{align-self:flex-end;background:rgba(124,92,255,.35);border:1px solid rgba(124,92,255,.5)}
+.msg.them{align-self:flex-start;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1)}
+.msg .who{display:block;font-size:10px;opacity:.6;margin-bottom:2px}
+.composer{display:flex;gap:8px;padding:10px;border-top:1px solid rgba(255,255,255,.08)}
+.composer input{flex:1}
+.person{padding:7px 9px;border-radius:9px;cursor:pointer;font-size:12.5px}
+.person:hover{background:rgba(255,255,255,.08)}
+.swatch{height:70px;border-radius:12px;cursor:pointer;border:2px solid transparent;background-size:cover;background-position:center}
+.swatch.active{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+</style>
+</head>
+<body>
+
+<div id="boot">
+  <div class="brand">Oblivian Systems</div>
+  <h1>OBLIVIAN OS</h1>
+  <div class="muted" style="margin-top:-14px">Choose your environment</div>
+  <div class="choices">
+    <div class="choice" data-os="linux"><div class="glyph">🐧</div><div class="name">LINUX</div><div class="sub">terminal · green · minimal</div></div>
+    <div class="choice" data-os="os"><div class="glyph">◈</div><div class="name">OBLIVIAN OS</div><div class="sub">glass · purple · cinematic</div></div>
+  </div>
+</div>
+
+<div id="wall"></div>
+
+<div id="topbar">
+  <div class="left"><b id="tb-brand">OBLIVIAN</b><span class="muted" id="tb-user">not signed in</span></div>
+  <span id="tb-clock" class="muted">--:--</span>
+</div>
+
+<div id="desk-windows"></div>
+<div id="dock"></div>
+
+<script>
+/* ========== storage & state ========== */
+const LS = {
+  get(k,d){ try{ const v = localStorage.getItem(k); return v===null ? d : JSON.parse(v); }catch(e){ return d; } },
+  set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+const state = {
+  os:     LS.get('obl_os', null),
+  user:   LS.get('obl_user', null),
+  accent: LS.get('obl_accent', '#7c5cff'),
+  wall:   LS.get('obl_wall', null)
+};
+const $ = s => document.querySelector(s);
+
+/* ========== data with graceful fallback ========== */
+const FALLBACK_WALLS = [
+  { id:'midnight', name:'Midnight', css:'radial-gradient(1200px 800px at 20% 10%, #2b1a55, #07070b 70%)' },
+  { id:'aurora',   name:'Aurora',   css:'linear-gradient(135deg,#0f2027,#203a43,#2c5364)' },
+  { id:'void',     name:'Void',     css:'#07070b' }
+];
+const FALLBACK_GAMES = [
+  { name:'Snake', ico:'🐍', type:'inline', fn:'snake' },
+  { name:'Doom (shareware)', ico:'👹', type:'embed', url:'https://archive.org/embed/doom-play' }
+];
+
+let WALLS = FALLBACK_WALLS;
+let GAMES = FALLBACK_GAMES;
+
+async function loadData(file, fallback){
+  try{
+    const r = await fetch('data/' + file, { cache:'no-store' });
+    if (!r.ok) throw new Error('http ' + r.status);
+    const j = await r.json();
+    if (Array.isArray(j) && j.length) return j;
+    return fallback;
+  }catch(e){
+    return fallback;
+  }
+}
+
+/* ========== theme & wallpaper ========== */
+function hexA(hex,a){
+  const h = String(hex).replace('#','');
+  if (h.length !== 6) return 'rgba(124,92,255,' + a + ')';
+  const r = parseInt(h.slice(0,2),16), g = parseInt(h.slice(2,4),16), b = parseInt(h.slice(4,6),16);
+  return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+}
+function applyTheme(){
+  const accent = state.accent || (state.os === 'linux' ? '#4ade80' : '#7c5cff');
+  document.documentElement.style.setProperty('--accent', accent);
+  document.documentElement.style.setProperty('--accent-soft', hexA(accent,.22));
+  $('#tb-brand').textContent = state.os === 'linux' ? 'LINUX' : 'OBLIVIAN OS';
+  refreshUser();
+}
+function refreshUser(){ $('#tb-user').textContent = state.user ? '· ' + state.user : 'not signed in'; }
+
+function applyWall(){
+  const w = $('#wall');
+  const v = state.wall;
+  if (v && /^(https?:|data:|url:)/.test(v)){
+    const u = v.replace(/^url:/,'');
+    w.style.background = 'url("' + u.replace(/"/g,'%22') + '") center/cover no-repeat';
+    return;
+  }
+  const preset = WALLS.find(x => x.id === v) || WALLS[0] || { css:'#07070b' };
+  w.style.background = preset.css;
+}
+
+/* ========== window manager ========== */
+let zTop = 1000;
+const openWins = {};
+
+function makeWindow(title, html, opts = {}){
+  const win = document.createElement('div');
+  win.className = 'win';
+  win.style.width  = (opts.w || 760) + 'px';
+  win.style.height = (opts.h || 520) + 'px';
+  const n = document.querySelectorAll('#desk-windows .win').length;
+  win.style.left = Math.max(10, Math.min(80 + n*26, window.innerWidth  - 360)) + 'px';
+  win.style.top  = Math.max(42, Math.min(60 + n*26, window.innerHeight - 240)) + 'px';
+  win.style.zIndex = ++zTop;
+
+  win.innerHTML =
+    '<div class="win-header"><span class="win-title"></span>' +
+      '<div class="win-btns">' +
+        '<button class="wb min" title="Minimize">–</button>' +
+        '<button class="wb close" title="Close">×</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="win-body"></div>';
+
+  win.querySelector('.win-title').textContent = title;
+  win.querySelector('.win-body').innerHTML = html;
+  document.getElementById('desk-windows').appendChild(win);
+
+  const head = win.querySelector('.win-header');
+  let dragging = false, sx = 0, sy = 0, ox = 0, oy = 0;
+  head.addEventListener('pointerdown', e => {
+    if (e.target.closest('.wb')) return;
+    dragging = true;
+    sx = e.clientX; sy = e.clientY;
+    ox = parseFloat(win.style.left); oy = parseFloat(win.style.top);
+    head.setPointerCapture(e.pointerId);
+  });
+  head.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    win.style.left = Math.max(-40, Math.min(window.innerWidth  - 100, ox + e.clientX - sx)) + 'px';
+    win.style.top  = Math.max(34,  Math.min(window.innerHeight - 60,  oy + e.clientY - sy)) + 'px';
+  });
+  head.addEventListener('pointerup', () => { dragging = false; });
+
+  win.addEventListener('pointerdown', () => { win.style.zIndex = ++zTop; });
+  win.querySelector('.close').onclick = () => {
+    win.remove();
+    for (const k in openWins) if (openWins[k] === win) delete openWins[k];
+  };
+  win.querySelector('.min').onclick = () => {
+    win.style.display = win.style.display === 'none' ? 'flex' : 'none';
+  };
+  return win;
+}
+
+/* ========== snake ========== */
+function mountSnake(root){
+  root.innerHTML =
+    '<canvas tabindex="0" width="380" height="380" ' +
+      'style="display:block;margin:0 auto;background:#0b0b12;outline:none;border-radius:10px"></canvas>' +
+    '<div style="text-align:center;padding:10px;font-size:12px;color:#8a86a8">Arrows / WASD · R to restart</div>';
+  const c = root.querySelector('canvas'), ctx = c.getContext('2d');
+  const S = 19, N = 20;
+  let snake = [{x:10,y:10}], dir = {x:1,y:0}, food = {x:15,y:15}, score = 0, dead = false;
+
+  function place(){ food = { x: Math.floor(Math.random()*N), y: Math.floor(Math.random()*N) }; }
+  function step(){
+    if (dead) return;
+    const h = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+    if (h.x<0 || h.y<0 || h.x>=N || h.y>=N || snake.some(s => s.x===h.x && s.y===h.y)){ dead = true; draw(); return; }
+    snake.unshift(h);
+    if (h.x===food.x && h.y===food.y){ score++; place(); } else snake.pop();
+    draw();
+  }
+  function draw(){
+    ctx.fillStyle = '#0b0b12'; ctx.fillRect(0,0,c.width,c.height);
+    ctx.fillStyle = '#ff4d6d'; ctx.fillRect(food.x*S+1, food.y*S+1, S-2, S-2);
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#7c5cff';
+    snake.forEach((s,i) => { ctx.globalAlpha = i===0 ? 1 : .78; ctx.fillRect(s.x*S+1, s.y*S+1, S-2, S-2); });
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#cfcbe8'; ctx.font = '14px system-ui'; ctx.fillText('Score: ' + score, 8, 20);
+    if (dead){
+      ctx.fillStyle = 'rgba(0,0,0,.72)'; ctx.fillRect(0,0,c.width,c.height);
+      ctx.fillStyle = '#fff'; ctx.font = '18px system-ui'; ctx.textAlign = 'center';
+      ctx.fillText('Game Over — press R', c.width/2, c.height/2);
+      ctx.textAlign = 'left';
+    }
+  }
+  c.addEventListener('keydown', e => {
+    const k = e.key.toLowerCase();
+    if (k === 'r'){ snake=[{x:10,y:10}]; dir={x:1,y:0}; score=0; dead=false; place(); draw(); return; }
+    if (dead) return;
+    if ((k==='arrowup'||k==='w')    && dir.y===0) dir={x:0,y:-1};
+    if ((k==='arrowdown'||k==='s')  && dir.y===0) dir={x:0,y:1};
+    if ((k==='arrowleft'||k==='a')  && dir.x===0) dir={x:-1,y:0};
+    if ((k==='arrowright'||k==='d') && dir.x===0) dir={x:1,y:0};
+    e.preventDefault();
+  });
+  place(); draw(); c.focus();
+  const iv = setInterval(step, 110);
+  const obs = new MutationObserver(() => {
+    if (!document.body.contains(c)){ clearInterval(iv); obs.disconnect(); }
+  });
+  obs.observe(document.body, { childList:true, subtree:true });
+}
+
+/* ========== games ========== */
+function launchGame(g){
+  if (g.type === 'inline' && g.fn === 'snake'){
+    const win = makeWindow('🐍 Snake', '<div id="snake-root" style="padding:18px"></div>', { w:440, h:520 });
+    mountSnake(win.querySelector('#snake-root'));
+    return;
+  }
+  if (g.type !== 'embed' || !g.url){
+    makeWindow(g.name || 'Game', '<div class="pad"><p class="muted">No launch URL for this entry.</p></div>', { w:420, h:200 });
+    return;
+  }
+  const html =
+    '<div style="display:flex;flex-direction:column;height:100%">' +
+      '<div class="row" style="padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.08)">' +
+        '<span class="muted g-url" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>' +
+        '<button class="btn ghost open-ext">Open externally</button>' +
+      '</div>' +
+      '<iframe style="flex:1;border:0;width:100%;background:#000" ' +
+        'sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-pointer-lock"></iframe>' +
+    '</div>';
+  const win = makeWindow((g.ico || '🎮') + ' ' + (g.name || 'Game'), html, { w:900, h:640 });
+  win.querySelector('.g-url').textContent = g.url;
+  win.querySelector('iframe').src = g.url;
+  win.querySelector('.open-ext').onclick = () => window.open(g.url, '_blank', 'noopener');
+}
+
+function appGames(){
+  const body =
+    '<div class="pad" style="padding-bottom:0">' +
+      '<div class="row">' +
+        '<input id="g-search" placeholder="Search games…" style="flex:1;min-width:200px">' +
+        '<button class="btn ghost" id="g-add">+ Add custom URL</button>' +
+      '</div>' +
+      '<p class="muted" style="margin-top:10px">Loaded from <code>data/games.json</code>. ' +
+      'Each host decides whether it allows framing — if a game renders blank, hit “Open externally”.</p>' +
+    '</div>' +
+    '<div class="grid" id="g-grid"></div>';
+
+  const win = makeWindow('Games', body, { w:860, h:600 });
+  const grid = win.querySelector('#g-grid');
+
+  function render(filter){
+    grid.innerHTML = '';
+    const f = (filter || '').toLowerCase();
+    GAMES.filter(g => (g.name || '').toLowerCase().includes(f)).forEach(g => {
+      const d = document.createElement('div');
+      d.className = 'tile';
+      const ico = document.createElement('div'); ico.className = 'ico'; ico.textContent = g.ico || '🎮';
+      const nm  = document.createElement('div'); nm.textContent = g.name || 'Untitled';
+      d.appendChild(ico); d.appendChild(nm);
+      d.onclick = () => launchGame(g);
+      grid.appendChild(d);
+    });
+    if (!grid.children.length){
+      grid.innerHTML = '<div class="muted" style="padding:8px">No matches.</div>';
+    }
+  }
+  render('');
+  win.querySelector('#g-search').oninput = e => render(e.target.value);
+  win.querySelector('#g-add').onclick = () => {
+    const u = prompt('Game URL (must allow embedding):');
+    if (u) launchGame({ name:'Custom', ico:'🔗', type:'embed', url:u });
+  };
+}
+
+/* ========== settings ========== */
+function appSettings(){
+  const body =
+    '<div class="pad">' +
+      '<h3>Wallpaper</h3>' +
+      '<div id="wall-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px"></div>' +
+      '<div class="row" style="margin-top:14px">' +
+        '<input id="gif-url" placeholder="Paste a GIF / image URL…" style="flex:1;min-width:200px">' +
+        '<button class="btn" id="set-gif">Set wallpaper</button>' +
+      '</div>' +
+      '<p class="muted">Presets come from <code>data/wallpapers.json</code>. GIF URLs are applied as a background image.</p>' +
+      '<h3 style="margin-top:22px">Accent</h3>' +
+      '<div class="row"><input type="color" id="accent" style="width:56px;height:38px;padding:2px"><span class="muted">Highlights &amp; buttons</span></div>' +
+      '<h3 style="margin-top:22px">Account</h3>' +
+      '<div class="row">' +
+        '<input id="username" placeholder="Your username" maxlength="24">' +
+        '<button class="btn" id="save-user">Save</button>' +
+      '</div>' +
+      '<p class="muted">This is the name friends search for in Messages.</p>' +
+    '</div>';
+
+  const win = makeWindow('Settings', body, { w:640, h:600 });
+  const grid = win.querySelector('#wall-grid');
+
+  WALLS.forEach(w => {
+    const d = document.createElement('div');
+    d.className = 'swatch' + (state.wall === w.id ? ' active' : '');
+    d.style.background = w.css;
+    d.title = w.name || w.id;
+    d.onclick = () => {
+      state.wall = w.id;
+      LS.set('obl_wall', state.wall);
+      applyWall();
+      grid.querySelectorAll('.swatch').forEach(x => x.classList.remove('active'));
+      d.classList.add('active');
+    };
+    grid.appendChild(d);
+  });
+
+  win.querySelector('#accent').value = state.accent;
+  win.querySelector('#accent').oninput = e => {
+    state.accent = e.target.value;
+    LS.set('obl_accent', state.accent);
+    applyTheme();
+  };
+
+  const gifInput = win.querySelector('#gif-url');
+  gifInput.value = /^(https?:|url:|data:)/.test(state.wall || '') ? state.wall : '';
+  win.querySelector('#set-gif').onclick = () => {
+    const u = gifInput.value.trim();
+    if (!u) return;
+    state.wall = u;
+    LS.set('obl_wall', state.wall);
+    applyWall();
+  };
+
+  const un = win.querySelector('#username');
+  un.value = state.user || '';
+  win.querySelector('#save-user').onclick = () => {
+    const v = un.value.trim().slice(0,24);
+    if (!v) return;
+    state.user = v;
+    LS.set('obl_user', v);
+    registerUser(v);
+    refreshUser();
+  };
+}
+
+/* ========== messages ========== */
+const USERS_KEY = 'obl_users';
+function registerUser(u){
+  const list = LS.get(USERS_KEY, []);
+  if (!list.includes(u)){ list.push(u); LS.set(USERS_KEY, list); }
+}
+const allUsers = () => LS.get(USERS_KEY, []);
+const chatKey  = (a,b) => 'obl_chat_' + [a,b].sort().join('__');
+const getMsgs  = (a,b) => LS.get(chatKey(a,b), []);
+function pushMsg(from,to,text){
+  const k = chatKey(from,to);
+  const m = LS.get(k, []);
+  m.push({ from, to, text, t: Date.now() });
+  LS.set(k, m);
+}
+
+function appChat(){
+  if (!state.user){
+    return makeWindow('Messages',
+      '<div class="pad"><h3>Pick a username first</h3>' +
+      '<p class="muted">Open Settings → Account, set a username, then come back.</p></div>',
+      { w:420, h:220 });
+  }
+  registerUser(state.user);
+
+  const body =
+    '<div class="chat">' +
+      '<div class="side">' +
+        '<div style="font-weight:700;font-size:13px;margin-bottom:10px" id="chat-me"></div>' +
+        '<input id="chat-search" placeholder="Search username" style="width:100%;margin-bottom:10px">' +
+        '<div id="chat-results"></div>' +
+        '<div style="margin-top:16px;font-size:11px;color:#8a86a8;margin-bottom:6px">ON THIS BROWSER</div>' +
+        '<div id="chat-people"></div>' +
+      '</div>' +
+      '<div class="main">' +
+        '<div class="msgs" id="chat-msgs">' +
+          '<div class="muted" style="margin:auto">Search a username to start</div>' +
+        '</div>' +
+        '<div class="composer">' +
+          '<input id="chat-input" placeholder="Message…" disabled>' +
+          '<button class="btn" id="chat-send" disabled>Send</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+
+  const win = makeWindow('Messages', body, { w:820, h:560 });
+  const me = state.user;
+  win.querySelector('#chat-me').textContent = '@' + me;
+
+  let partner = null;
+  const peopleEl  = win.querySelector('#chat-people');
+  const resultsEl = win.querySelector('#chat-results');
+  const msgsEl    = win.querySelector('#chat-msgs');
+  const input     = win.querySelector('#chat-input');
+  const sendBtn   = win.querySelector('#chat-send');
+
+  function renderPeople(){
+    peopleEl.innerHTML = '';
+    const others = allUsers().filter(u => u !== me);
+    if (!others.length){ peopleEl.innerHTML = '<div class="muted">Nobody else yet.</div>'; return; }
+    others.forEach(u => {
+      const d = document.createElement('div');
+      d.className = 'person';
+      d.textContent = '@' + u;
+      d.onclick = () => openConvo(u);
+      peopleEl.appendChild(d);
+    });
+  }
+
+  function renderMsgs(){
+    if (!partner) return;
+    const list = getMsgs(me, partner);
+    msgsEl.innerHTML = '';
+    if (!list.length){
+      msgsEl.innerHTML = '<div class="muted" style="margin:auto">No messages with @' + partner + ' yet.</div>';
+      return;
+    }
+    list.forEach(m => {
+      const d = document.createElement('div');
+      d.className = 'msg ' + (m.from === me ? 'me' : 'them');
+      const who = document.createElement('span'); who.className = 'who'; who.textContent = '@' + m.from;
+      const txt = document.createElement('span'); txt.className = 'txt'; txt.textContent = m.text;
+      d.appendChild(who); d.appendChild(txt);
+      msgsEl.appendChild(d);
+    });
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+  }
+
+  function openConvo(name){
+    partner = name;
+    input.disabled = false;
+    sendBtn.disabled = false;
+    input.focus();
+    renderMsgs();
+  }
+
+  win.querySelector('#chat-search').oninput = e => {
+    const q = e.target.value.trim().toLowerCase();
+    resultsEl.innerHTML = '';
+    if (!q) return;
+    const hits = allUsers().filter(u => u !== me && u.toLowerCase().includes(q));
+    if (!hits.length){
+      resultsEl.innerHTML = '<div class="muted">No match. (Only names used in this browser appear.)</div>';
+      return;
+    }
+    hits.forEach(u => {
+      const d = document.createElement('div');
+      d.className = 'person';
+      d.textContent = '@' + u;
+      d.onclick = () => openConvo(u);
+      resultsEl.appendChild(d);
+    });
+  };
+
+  function send(){
+    const text = input.value.trim();
+    if (!text || !partner) return;
+    pushMsg(me, partner, text);
+    input.value = '';
+    renderMsgs();
+  }
+  sendBtn.onclick = send;
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
+
+  function onStorage(e){
+    if (e.key && e.key.indexOf('obl_chat_') === 0) renderMsgs();
+    if (e.key === USERS_KEY) renderPeople();
+  }
+  window.addEventListener('storage', onStorage);
+  const obs = new MutationObserver(() => {
+    if (!document.body.contains(win)){ window.removeEventListener('storage', onStorage); obs.disconnect(); }
+  });
+  obs.observe(document.body, { childList:true, subtree:true });
+
+  renderPeople();
+}
+
+/* ========== proxy browser ========== */
+function appBrowser(){
+  const body =
+    '<div style="display:flex;flex-direction:column;height:100%">' +
+      '<div class="row" style="padding:10px;border-bottom:1px solid rgba(255,255,255,.08)">' +
+        '<input id="urlbar" placeholder="https://example.com" style="flex:1;min-width:200px">' +
+        '<button class="btn" id="go">Go</button>' +
+        '<button class="btn ghost" id="ext">Open externally</button>' +
+      '</div>' +
+      '<iframe id="frame" style="flex:1;border:0;width:100%;background:#fff" ' +
+        'sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>' +
+      '<div class="muted" style="padding:8px 12px;border-top:1px solid rgba(255,255,255,.08)">' +
+        'Big sites (YouTube, Roblox, TikTok, Discord) send X-Frame-Options and will refuse to load here. ' +
+        'A real unblocker needs a proxy server — see About → Making it real.' +
+      '</div>' +
+    '</div>';
+
+  const win = makeWindow('Proxy Browser', body, { w:940, h:640 });
+  const bar = win.querySelector('#urlbar');
+  const frame = win.querySelector('#frame');
+
+  function go(){
+    let u = bar.value.trim();
+    if (!u) return;
+    if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
+    bar.value = u;
+    frame.src = u;
+  }
+  win.querySelector('#go').onclick = go;
+  bar.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+  win.querySelector('#ext').onclick = () => { if (bar.value) window.open(bar.value, '_blank', 'noopener'); };
+}
+
+/* ========== music ========== */
+function appMusic(){
+  const body =
+    '<div class="pad">' +
+      '<h3>Library</h3>' +
+      '<div class="row">' +
+        '<input id="m-url" placeholder="Audio URL (.mp3 / .ogg / .m4a)" style="flex:1;min-width:220px">' +
+        '<input id="m-name" placeholder="Title" style="width:150px">' +
+        '<button class="btn" id="m-add">Add</button>' +
+      '</div>' +
+      '<p class="muted">Streams direct audio links. Use files you have the right to play.</p>' +
+      '<div id="m-list" style="margin-top:14px"></div>' +
+      '<audio id="m-audio" controls style="width:100%;margin-top:16px"></audio>' +
+    '</div>';
+
+  const win = makeWindow('Music', body, { w:620, h:520 });
+  const listEl = win.querySelector('#m-list');
+  const audio  = win.querySelector('#m-audio');
+  let tracks = LS.get('obl_tracks', []);
+
+  function render(){
+    listEl.innerHTML = '';
+    if (!tracks.length){ listEl.innerHTML = '<div class="muted">No tracks yet.</div>'; return; }
+    tracks.forEach((t, i) => {
+      const row = document.createElement('div');
+      row.className = 'person';
+      row.style.display = 'flex';
+      row.style.justifyContent = 'space-between';
+      row.style.alignItems = 'center';
+      const nm = document.createElement('span'); nm.textContent = t.name;
+      const del = document.createElement('button'); del.className = 'btn ghost'; del.textContent = '✕';
+      nm.onclick = () => { audio.src = t.url; audio.play(); };
+      del.onclick = () => { tracks.splice(i,1); LS.set('obl_tracks', tracks); render(); };
+      row.appendChild(nm); row.appendChild(del);
+      listEl.appendChild(row);
+    });
+  }
+  render();
+
+  win.querySelector('#m-add').onclick = () => {
+    const url  = win.querySelector('#m-url').value.trim();
+    const name = win.querySelector('#m-name').value.trim() || 'Untitled';
+    if (!url) return;
+    tracks.push({ url, name });
+    LS.set('obl_tracks', tracks);
+    win.querySelector('#m-url').value = '';
+    win.querySelector('#m-name').value = '';
+    render();
+  };
+}
+
+/* ========== doblox ========== */
+function appDoblox(){
+  const body =
+    '<div class="pad">' +
+      '<h3>Doblox</h3>' +
+      '<p class="muted">Roblox places are <code>.rbxl</code> files executed by the Roblox engine. ' +
+      'There is no browser runtime for them, and roblox.com blocks iframing. So Doblox is a launcher, not an emulator.</p>' +
+      '<div class="row" style="margin-top:14px">' +
+        '<button class="btn" id="d1">Open uncopylocked repo</button>' +
+        '<button class="btn ghost" id="d2">Open Roblox</button>' +
+      '</div>' +
+      '<h3 style="margin-top:26px">What would actually work</h3>' +
+      '<p class="muted">Rebuild a small 3D sandbox with three.js and load maps you author yourself. ' +
+      'That is a real project — not a one-file drop-in.</p>' +
+    '</div>';
+  const win = makeWindow('Doblox', body, { w:560, h:420 });
+  win.querySelector('#d1').onclick = () =>
+    window.open('https://github.com/amaanallen2016-web/Doblox-Uncopylocked-Games', '_blank', 'noopener');
+  win.querySelector('#d2').onclick = () =>
+    window.open('https://www.roblox.com', '_blank', 'noopener');
+}
+
+/* ========== terminal ========== */
+function appTerminal(){
+  const body =
+    '<div style="padding:14px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;height:100%;display:flex;flex-direction:column">' +
+      '<div id="t-out" style="flex:1;overflow:auto;white-space:pre-wrap;line-height:1.6"></div>' +
+      '<div class="row" style="margin-top:8px">' +
+        '<span style="color:var(--accent)">$</span>' +
+        '<input id="t-in" style="flex:1;background:transparent;border:0;border-bottom:1px solid rgba(255,255,255,.15);border-radius:0" autocomplete="off">' +
+      '</div>' +
+    '</div>';
+
+  const win = makeWindow('Terminal', body, { w:680, h:420 });
+  const out = win.querySelector('#t-out');
+  const inp = win.querySelector('#t-in');
+
+  const print = s => { out.textContent += s + '\n'; out.scrollTop = out.scrollHeight; };
+  print('OblivianOS shell — type "help"');
+  inp.focus();
+
+  inp.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    const line = inp.value.trim();
+    inp.value = '';
+    print('$ ' + line);
+    const [cmd, ...args] = line.split(/\s+/);
+    switch (cmd){
+      case '': break;
+      case 'help':
+        print('help              this list\nneofetch          system info\nwallpaper <url>   set wallpaper\nwhoami            current user\ngames             count loaded games\nclear             clear screen\ndate              current time');
+        break;
+      case 'neofetch':
+        print('  ◈  OblivianOS\n  ------------------\n  OS:      ' + (state.os === 'linux' ? 'Linux' : 'Oblivian OS') +
+              '\n  Shell:   oblsh\n  User:    ' + (state.user || 'guest') +
+              '\n  Games:   ' + GAMES.length +
+              '\n  Windows: ' + document.querySelectorAll('#desk-windows .win').length);
+        break;
+      case 'games': print(String(GAMES.length) + ' games loaded'); break;
+      case 'wallpaper':
+        if (args[0]){ state.wall = args[0]; LS.set('obl_wall', state.wall); applyWall(); print('wallpaper set'); }
+        else print('usage: wallpaper <url>');
+        break;
+      case 'whoami': print(state.user || 'guest'); break;
+      case 'clear': out.textContent = ''; break;
+      case 'date': print(new Date().toString()); break;
+      default: print('command not found: ' + cmd);
+    }
+  });
+  win.addEventListener('pointerdown', () => inp.focus());
+}
+
+/* ========== about ========== */
+function appAbout(){
+  const body =
+    '<div class="pad">' +
+      '<h3>OblivianOS</h3>' +
+      '<p class="muted">A browser desktop shell. Everything runs client-side — no build step, no dependencies.</p>' +
+      '<h3 style="margin-top:22px">What is real here</h3>' +
+      '<p class="muted">' +
+        '· Window manager, dock, boot selector<br>' +
+        '· Settings: CSS/GIF wallpapers, accent color, username<br>' +
+        '· Games: list loaded from <code>data/games.json</code>, plus a built-in Snake<br>' +
+        '· Messages: username search and chat, synced across tabs of this browser<br>' +
+        '· Proxy browser: iframe with external fallback<br>' +
+        '· Music: your own audio URLs<br>' +
+        '· Terminal with a few commands' +
+      '</p>' +
+      '<h3 style="margin-top:22px">What is not real (and why)</h3>' +
+      '<p class="muted">' +
+        '· <b>800k games</b> — no legal source exists, and most hosts block iframing.<br>' +
+        '· <b>PS4 emulation</b> — not viable on desktop, let alone in a browser tab.<br>' +
+        '· <b>Roblox inside the page</b> — .rbxl needs the Roblox engine; the site blocks framing.<br>' +
+        '· <b>Every song</b> — copyright.<br>' +
+        '· <b>Cross-device chat/calls</b> — needs a backend.<br>' +
+        '· <b>Real unblocking proxy</b> — needs a server; a browser alone cannot bypass CORS or X-Frame-Options.' +
+      '</p>' +
+      '<h3 style="margin-top:22px">Making it real</h3>' +
+      '<p class="muted">' +
+        '<b>Chat:</b> swap the localStorage helpers for Supabase Realtime or Firebase. ' +
+        'Add WebRTC + a signaling channel for calls.<br>' +
+        '<b>Proxy:</b> deploy a Cloudflare Worker that fetches the target URL and rewrites headers, then point the iframe at your worker.<br>' +
+        '<b>Retro games:</b> self-host EmulatorJS and load ROMs you own.<br>' +
+        '<b>Real Linux:</b> run v86 in a worker with an Alpine image — that is the honest way to “run Linux in the browser”.' +
+      '</p>' +
+    '</div>';
+  makeWindow('About', body, { w:680, h:600 });
+}
+
+/* ========== app registry ========== */
+const APPS = [
+  { id:'settings', icon:'⚙️', name:'Settings', fn:appSettings },
+  { id:'games',    icon:'🎮', name:'Games',    fn:appGames },
+  { id:'chat',     icon:'💬', name:'Messages', fn:appChat },
+  { id:'browser',  icon:'🌐', name:'Browser',  fn:appBrowser },
+  { id:'music',    icon:'🎵', name:'Music',    fn:appMusic },
+  { id:'doblox',   icon:'🟥', name:'Doblox',   fn:appDoblox },
+  { id:'terminal', icon:'>_', name:'Terminal', fn:appTerminal },
+  { id:'about',    icon:'ⓘ',  name:'About',    fn:appAbout }
+];
+
+function openApp(id){
+  const app = APPS.find(a => a.id === id);
+  if (!app) return;
+  const existing = openWins[id];
+  if (existing && document.body.contains(existing)){
+    existing.style.display = 'flex';
+    existing.style.zIndex = ++zTop;
+    return;
+  }
+  const win = app.fn();
+  if (win && win.classList && win.classList.contains('win')) openWins[id] = win;
+}
+
+function buildDock(){
+  const dock = $('#dock');
+  dock.innerHTML = '';
+  APPS.forEach(a => {
+    const d = document.createElement('div');
+    d.className = 'dock-item';
+    d.textContent = a.icon;
+    d.title = a.name;
+    d.onclick = () => openApp(a.id);
+    dock.appendChild(d);
+  });
+}
+
+/* ========== clock ========== */
+function tick(){
+  $('#tb-clock').textContent = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+}
+
+/* ========== boot ========== */
+document.querySelectorAll('.choice').forEach(c => {
+  c.addEventListener('click', () => {
+    state.os = c.dataset.os;
+    LS.set('obl_os', state.os);
+    if (!state.accent) state.accent = state.os === 'linux' ? '#4ade80' : '#7c5cff';
+    if (!state.wall)   state.wall   = state.os === 'linux' ? 'forest' : 'midnight';
+    LS.set('obl_accent', state.accent);
+    LS.set('obl_wall',   state.wall);
+
+    applyTheme();
+    applyWall();
+    buildDock();
+
+    $('#boot').classList.add('hide');
+    setTimeout(() => { $('#boot').style.display = 'none'; }, 480);
+  });
+});
+
+(async function init(){
+  GAMES = await loadData('games.json', FALLBACK_GAMES);
+  WALLS = await loadData('wallpapers.json', FALLBACK_WALLS);
+  applyTheme();
+  applyWall();
+  buildDock();
+  tick();
+  setInterval(tick, 15000);
+})();
+</script>
+</body>
+</html>
