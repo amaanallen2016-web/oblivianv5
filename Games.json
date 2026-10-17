@@ -1,0 +1,11 @@
+[
+  { "name": "Snake",              "ico": "🐍", "type": "inline", "fn": "snake" },
+  { "name": "Doom (shareware)",   "ico": "👹", "type": "embed", "url": "https://archive.org/embed/doom-play" },
+  { "name": "Wolfenstein 3D",     "ico": "🪖", "type": "embed", "url": "https://archive.org/embed/msdos_Wolfenstein_3D_1992" },
+  { "name": "Quake",              "ico": "🩸", "type": "embed", "url": "https://archive.org/embed/quake_20210424" },
+  { "name": "Astray",             "ico": "🧊", "type": "embed", "url": "https://wwwtyro.github.io/Astray/" },
+  { "name": "Hextris",            "ico": "⬡",  "type": "embed", "url": "https://hextris.io/" },
+  { "name": "Untrusted",          "ico": "💻", "type": "embed", "url": "https://alexnisnevich.github.io/untrusted/" },
+  { "name": "2048",               "ico": "🔢", "type": "embed", "url": "https://play2048.co/" },
+  { "name": "Chrome Dino",        "ico": "🦖", "type": "embed", "url": "https://wayou.github.io/t-rex-runner/" }
+]
